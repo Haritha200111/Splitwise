@@ -1,0 +1,7 @@
+{
+    "INTERNAL_ERROR": "Internal Error",
+    "LIMIT_EXCEEDS": "Maximum Limit Reached",
+    "BAD_CREDENTIAL": "Invalid Credential",
+    "BAD_INPUT": "Invalid Request",
+    "INVALID_TOTP": "Invalid TOTP"
+}
