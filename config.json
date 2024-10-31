@@ -1,0 +1,6 @@
+{
+    "MongoURL": "mongodb://localhost:27017",
+    "MongoDBName": "SPLIT",
+    "ContextPath": "/SPLIT",
+    "JWTSignedString":"secret"
+}
