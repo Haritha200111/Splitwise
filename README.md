@@ -2,7 +2,7 @@
 This application provides a RESTful API for managing splits among friends or family, allowing users to efficiently track and manage shared expenses.
 
 # Prerequisites
-Go installed on your machine.
+Ensure Go is installed your machine.
 PostgreSQL installed and running.
 
 # Database Setup
