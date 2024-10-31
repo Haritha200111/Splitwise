@@ -16,5 +16,3 @@ func LoadConfig() {
 		log.Panic("Config not found...")
 	}
 }
-
-//

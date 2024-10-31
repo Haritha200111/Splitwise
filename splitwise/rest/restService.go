@@ -22,8 +22,6 @@ import (
 	Error "split/error"
 	"split/splitwise/dto"
 
-	"split/splitwise/service"
-
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
@@ -60,7 +58,13 @@ func listen() {
 
 	// Other routes for handling services and methods
 	contextPath := viper.GetString("ContextPath")
-	router.Handle(contextPath+"/{service}/{method}", http.HandlerFunc(handle))
+	// router.Handle(contextPath+"/{service}/{method}", http.HandlerFunc(handle))
+	router.Handle(contextPath+"/SplitWiseService/AddUser", http.HandlerFunc(handle)).Methods("POST")
+	router.Handle(contextPath+"/SplitWiseService/AddUserToGroup", http.HandlerFunc(handle)).Methods("POST")
+	router.Handle(contextPath+"/SplitWiseService/CreateGroup", http.HandlerFunc(handle)).Methods("POST")
+	router.Handle(contextPath+"/SplitWiseService/DeleteGroup", http.HandlerFunc(handle)).Methods("DELETE")
+	router.Handle(contextPath+"/SplitWiseService/Payment", http.HandlerFunc(handle)).Methods("PUT")
+	router.Handle(contextPath+"/SplitWiseService/Split", http.HandlerFunc(handle)).Methods("POST")
 
 	// Set CORS headers and options
 	headersOK := handlers.AllowedHeaders([]string{
@@ -69,7 +73,7 @@ func listen() {
 		"Authorization", "X-Requested-With", "X-CSRF-Token",
 	})
 	originsOK := handlers.AllowedOrigins([]string{"*"})
-	methodsOK := handlers.AllowedMethods([]string{"GET", "POST", "OPTIONS", "DELETE", "PUT"})
+	methodsOK := handlers.AllowedMethods([]string{"GET", "POST", "DELETE", "PUT"})
 
 	// Wrap the router with CORS settings
 	loggedRouter := handlers.CORS(headersOK, originsOK, methodsOK)(router)
@@ -90,11 +94,10 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid request", http.StatusBadRequest)
 		return
 	}
+	log.Println("loginRequestloginRequestloginRequestloginRequestloginRequestloginRequestloginRequestloginRequestloginRequest", loginRequest.EmailId)
 
-	// Validate credentials (you may need to query your database here)
-	_, err := validateUser(loginRequest.EmailId, loginRequest.UserPassword)
+	_, err := validateUser(loginRequest.EmailId)
 	if err != nil {
-		log.Println("err@@@@@@@@@@", err)
 		http.Error(w, "Invalid email or password", http.StatusUnauthorized)
 		return
 	}
@@ -110,66 +113,6 @@ func LoginHandler(w http.ResponseWriter, r *http.Request) {
 	response := map[string]string{"token": token}
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
-}
-
-// GroupHandler handles CRUD operations for groups
-func GroupHandler(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodPost: // Handle Create
-		var req dto.Request
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Bad Request", http.StatusBadRequest)
-			return
-		}
-		resp, err := service.SplitWiseService.CreateGroup(&req)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		json.NewEncoder(w).Encode(resp)
-
-	case http.MethodGet: // Handle Read
-		groupID := r.URL.Query().Get("id")
-		if groupID == "" {
-			http.Error(w, "Group ID is required", http.StatusBadRequest)
-			return
-		}
-		resp, err := splitWiseService.GetGroup(groupID)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
-		}
-		json.NewEncoder(w).Encode(resp)
-
-	case http.MethodPut: // Handle Update
-		var req dto.GroupRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			http.Error(w, "Bad Request", http.StatusBadRequest)
-			return
-		}
-		resp, err := splitWiseService.UpdateGroup(&req)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-		json.NewEncoder(w).Encode(resp)
-
-	case http.MethodDelete: // Handle Delete
-		groupID := r.URL.Query().Get("id")
-		if groupID == "" {
-			http.Error(w, "Group ID is required", http.StatusBadRequest)
-			return
-		}
-		err := splitWiseService.DeleteGroup(groupID)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusNotFound)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent)
-
-	default:
-		http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-	}
 }
 
 func GenerateJWT(email string) (string, error) {
@@ -190,7 +133,9 @@ func GenerateJWT(email string) (string, error) {
 }
 
 func handle(w http.ResponseWriter, r *http.Request) {
-	log.Println("rea****************", r)
+	log.Println("rea****************", r.URL.Path)
+	a := strings.Split(r.URL.String(), "/")
+	log.Println("aaaaaaaaaa", a[1])
 	var resp interface{}
 	isJson := false
 
@@ -199,14 +144,11 @@ func handle(w http.ResponseWriter, r *http.Request) {
 	rr["RequestTime"] = time.Now()
 	rr["ipAddress"] = getIPAddress(r)
 
-	params := mux.Vars(r)
 	body, _ := ioutil.ReadAll(r.Body)
 	rr["RequestBody"] = body
-	serviceName := params["service"]
-	methodName := params["method"]
-	requestName := serviceName + ":" + methodName
-	rr["ServiceName"] = serviceName
-	rr["MethodName"] = methodName
+	requestName := a[2] + ":" + a[3]
+	rr["ServiceName"] = a[2]
+	rr["MethodName"] = a[3]
 	rr["RequestName"] = requestName
 	rr["isRpc"] = true
 	var ctx context.Context
@@ -336,6 +278,7 @@ func loggingMiddleware(req map[string]interface{}) (context.Context, error) {
 		log.Info("error on loggingMiddleware unMarshal ..")
 		return nil, err
 	}
+	log.Println("request.RequestNamerequest.RequestName", request.RequestName)
 	ipAddress := request.IpAddress
 	if request.RequestName != "UserService:GetToken" && request.RequestName != "UserService:RegisterDeviceRequest" &&
 		request.RequestName != "UserService:RegisterDevice" && request.RequestName != "UserService:ValidateOTP" && request.RequestName != "KeyService:InitiateRegisterDevice" &&

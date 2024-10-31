@@ -12,4 +12,5 @@ type TokenClaims struct {
 	Jti       string
 	Key       string
 	jwt.StandardClaims
+	Password string
 }

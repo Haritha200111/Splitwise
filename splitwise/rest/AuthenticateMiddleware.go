@@ -37,6 +37,7 @@ func GetKeyClaims(auth string) (*dto.TokenClaims, error) {
 		if err := mapstructure.Decode(claims, &userClaims); err != nil {
 			return nil, fmt.Errorf("error decoding claims: %w", err)
 		}
+
 		return &userClaims, nil
 	}
 	return nil, fmt.Errorf("invalid token claims")
@@ -64,7 +65,7 @@ func Authenticate(rpcRequest *dto.AuthenticateRequest) (*dto.UserAccount, error)
 
 	userName := tokenClaims.UserEmail
 
-	existUser, err := validateUser(userName, "Test@123")
+	existUser, err := validateUser(userName)
 	if err != nil {
 		return nil, err
 	}
@@ -72,17 +73,13 @@ func Authenticate(rpcRequest *dto.AuthenticateRequest) (*dto.UserAccount, error)
 	return existUser, nil
 }
 
-func validateUser(email, pass string) (*dto.UserAccount, error) {
+func validateUser(email string) (*dto.UserAccount, error) {
 	var existUser dto.UserAccount
 	if err := db.DB.Find(&existUser, "emailid", email); err != nil {
 		log.Println("errrrrr", err)
 	}
-	log.Println("user%$***************", existUser)
 	if existUser.EmailId == "" {
 		return nil, Error.NOT_FOUND_USER
-	}
-	if existUser.UserPassword != pass {
-		return nil, Error.ErrInvalidCredential
 	}
 	return &existUser, nil
 }
